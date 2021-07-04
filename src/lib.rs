@@ -30,6 +30,7 @@ use std::sync::Arc;
 ///     assert_eq!(*m2.get::<i8>().unwrap(), 2);
 /// }
 /// ```
+#[derive(Default)]
 pub struct MetaInfo {
     /// Parent is read-only, if we can't find the specified key in the current,
     /// we search it in the parent scope.
@@ -42,11 +43,7 @@ impl MetaInfo {
     /// Creates an empty `MetaInfo`.
     #[inline]
     pub fn new() -> MetaInfo {
-        MetaInfo {
-            parent: None,
-            tmap: FxHashMap::default(),
-            smap: HashMap::default(),
-        }
+        Default::default()
     }
 
     /// Creates an `MetaInfo` with the parent given.
@@ -145,12 +142,6 @@ impl MetaInfo {
     pub fn extend(&mut self, other: MetaInfo) {
         self.tmap.extend(other.tmap);
         self.smap.extend(other.smap);
-    }
-}
-
-impl Default for MetaInfo {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
