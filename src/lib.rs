@@ -1,9 +1,9 @@
+use fxhash::FxHashMap;
 use std::any::{Any, TypeId};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-
-use fxhash::FxHashMap;
 
 /// `MetaInfo` is used to passthrough information between components and even client-server.
 /// It supports two types of info: typed map and string k-v.
@@ -34,8 +34,8 @@ pub struct MetaInfo {
     /// Parent is read-only, if we can't find the specified key in the current,
     /// we search it in the parent scope.
     parent: Option<Arc<MetaInfo>>,
-    tmap: FxHashMap<TypeId, Box<dyn Any>>,
-    smap: HashMap<&'static str, &'static str>,
+    tmap: FxHashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    smap: HashMap<Cow<'static, str>, Cow<'static, str>>,
 }
 
 impl MetaInfo {
@@ -61,12 +61,12 @@ impl MetaInfo {
     }
 
     /// Insert a type into this `MetaInfo`.
-    pub fn insert<T: 'static>(&mut self, val: T) {
+    pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) {
         self.tmap.insert(TypeId::of::<T>(), Box::new(val));
     }
 
     /// Insert a string k-v into this `MetaInfo`.
-    pub fn insert_string(&mut self, key: &'static str, val: &'static str) {
+    pub fn insert_string(&mut self, key: Cow<'static, str>, val: Cow<'static, str>) {
         self.smap.insert(key, val);
     }
 
@@ -82,7 +82,7 @@ impl MetaInfo {
     }
 
     /// Check if `MetaInfo` contains the given string k-v
-    pub fn contains_string(&self, key: &'static str) -> bool {
+    pub fn contains_string(&self, key: &str) -> bool {
         if self.smap.contains_key(key) {
             true
         } else if self.parent.is_some() {
@@ -116,10 +116,10 @@ impl MetaInfo {
     }
 
     /// Get a reference to a string k-v previously inserted on this `MetaInfo`.
-    pub fn get_string(&self, key: &'static str) -> Option<&'static str> {
+    pub fn get_string(&self, key: &str) -> Option<Cow<'static, str>> {
         let t = self.smap.get(key);
         if let Some(t) = t {
-            return Some(*t);
+            return Some(t.clone());
         }
         if self.parent.is_some() {
             return self.parent.as_ref().unwrap().get_string(key);
@@ -129,7 +129,7 @@ impl MetaInfo {
 
     /// Remove a string k-v from this `MetaInfo` and return it.
     /// Can only remove the type in the current scope.
-    pub fn remove_string(&mut self, key: &'static str) -> Option<&'static str> {
+    pub fn remove_string(&mut self, key: &str) -> Option<Cow<'static, str>> {
         self.smap.remove(key)
     }
 
