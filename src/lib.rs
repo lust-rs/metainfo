@@ -4,7 +4,7 @@ use fxhash::FxHashMap;
 use std::borrow::Cow;
 use std::fmt;
 use std::sync::Arc;
-use type_map::TypeMap;
+pub use type_map::{IdentHash, TypeMap};
 
 /// `MetaInfo` is used to passthrough information between components and even client-server.
 /// It supports two types of info: typed map and string k-v.
