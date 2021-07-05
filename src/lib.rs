@@ -1,9 +1,10 @@
+mod type_map;
+
 use fxhash::FxHashMap;
-use std::any::{Any, TypeId};
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use type_map::TypeMap;
 
 /// `MetaInfo` is used to passthrough information between components and even client-server.
 /// It supports two types of info: typed map and string k-v.
@@ -35,8 +36,8 @@ pub struct MetaInfo {
     /// Parent is read-only, if we can't find the specified key in the current,
     /// we search it in the parent scope.
     parent: Option<Arc<MetaInfo>>,
-    tmap: FxHashMap<TypeId, Box<dyn Any + Send + Sync>>,
-    smap: HashMap<Cow<'static, str>, Cow<'static, str>>,
+    tmap: Option<TypeMap>,
+    smap: Option<FxHashMap<Cow<'static, str>, Cow<'static, str>>>,
 }
 
 impl MetaInfo {
@@ -52,96 +53,116 @@ impl MetaInfo {
     pub fn from(parent: Arc<MetaInfo>) -> MetaInfo {
         MetaInfo {
             parent: Some(parent),
-            tmap: FxHashMap::default(),
-            smap: HashMap::default(),
+            tmap: None,
+            smap: None,
         }
     }
 
     /// Insert a type into this `MetaInfo`.
+    #[inline]
     pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) {
-        self.tmap.insert(TypeId::of::<T>(), Box::new(val));
+        self.tmap.get_or_insert_with(TypeMap::default).insert(val);
     }
 
     /// Insert a string k-v into this `MetaInfo`.
+    #[inline]
     pub fn insert_string(&mut self, key: Cow<'static, str>, val: Cow<'static, str>) {
-        self.smap.insert(key, val);
+        self.smap
+            .get_or_insert_with(FxHashMap::default)
+            .insert(key, val);
     }
 
     /// Check if `MetaInfo` contains entry
+    #[inline]
     pub fn contains<T: 'static>(&self) -> bool {
-        if self.tmap.contains_key(&TypeId::of::<T>()) {
-            true
-        } else if self.parent.is_some() {
-            self.parent.as_ref().unwrap().contains::<T>()
-        } else {
-            false
+        if self
+            .tmap
+            .as_ref()
+            .map(|tmap| tmap.contains::<T>())
+            .unwrap_or(false)
+        {
+            return true;
         }
+        self.parent
+            .as_ref()
+            .map(|parent| parent.as_ref().contains::<T>())
+            .unwrap_or(false)
     }
 
     /// Check if `MetaInfo` contains the given string k-v
+    #[inline]
     pub fn contains_string(&self, key: &str) -> bool {
-        if self.smap.contains_key(key) {
-            true
-        } else if self.parent.is_some() {
-            self.parent.as_ref().unwrap().contains_string(key)
-        } else {
-            false
+        if self
+            .smap
+            .as_ref()
+            .map(|smap| smap.contains_key(key))
+            .unwrap_or(false)
+        {
+            return true;
         }
+        self.parent
+            .as_ref()
+            .map(|parent| parent.as_ref().contains_string(key))
+            .unwrap_or(false)
     }
 
     /// Get a reference to a type previously inserted on this `MetaInfo`.
+    #[inline]
     pub fn get<T: 'static>(&self) -> Option<&T> {
-        let t = self
-            .tmap
-            .get(&TypeId::of::<T>())
-            .and_then(|boxed| boxed.downcast_ref());
-        if t.is_some() {
-            return t;
-        }
-        if self.parent.is_some() {
-            return self.parent.as_ref().unwrap().get::<T>();
-        }
-        None
+        self.tmap.as_ref().and_then(|tmap| tmap.get()).or_else(|| {
+            self.parent
+                .as_ref()
+                .and_then(|parent| parent.as_ref().get::<T>())
+        })
     }
 
     /// Remove a type from this `MetaInfo` and return it.
     /// Can only remove the type in the current scope.
+    #[inline]
     pub fn remove<T: 'static>(&mut self) -> Option<T> {
-        self.tmap
-            .remove(&TypeId::of::<T>())
-            .and_then(|boxed| boxed.downcast().ok().map(|boxed| *boxed))
+        self.tmap.as_mut().and_then(|tmap| tmap.remove::<T>())
     }
 
     /// Get a reference to a string k-v previously inserted on this `MetaInfo`.
-    pub fn get_string(&self, key: &str) -> Option<Cow<'static, str>> {
-        let t = self.smap.get(key);
-        if let Some(t) = t {
-            return Some(t.clone());
-        }
-        if self.parent.is_some() {
-            return self.parent.as_ref().unwrap().get_string(key);
-        }
-        None
+    #[inline]
+    pub fn get_string(&self, key: &str) -> Option<&Cow<'static, str>> {
+        self.smap
+            .as_ref()
+            .and_then(|smap| smap.get(key))
+            .or_else(|| {
+                self.parent
+                    .as_ref()
+                    .and_then(|parent| parent.as_ref().get_string(key))
+            })
     }
 
     /// Remove a string k-v from this `MetaInfo` and return it.
     /// Can only remove the type in the current scope.
+    #[inline]
     pub fn remove_string(&mut self, key: &str) -> Option<Cow<'static, str>> {
-        self.smap.remove(key)
+        self.smap.as_mut().and_then(|smap| smap.remove(key))
     }
 
     /// Clear the `MetaInfo` of all inserted MetaInfo.
     #[inline]
     pub fn clear(&mut self) {
-        self.tmap.clear();
-        self.smap.clear();
+        self.tmap.as_mut().map(|tmap| tmap.clear());
+        self.smap.as_mut().map(|smap| smap.clear());
     }
 
     /// Extends self with the items from another `MetaInfo`.
     /// Only extend the items in the current scope.
+    #[inline]
     pub fn extend(&mut self, other: MetaInfo) {
-        self.tmap.extend(other.tmap);
-        self.smap.extend(other.smap);
+        if let Some(tmap) = other.tmap {
+            self.tmap.get_or_insert_with(TypeMap::default).extend(tmap);
+        }
+
+        if let Some(smap) = other.smap {
+            self.smap
+                .get_or_insert_with(FxHashMap::default)
+                .extend(smap);
+        }
     }
 }
 
