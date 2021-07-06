@@ -4,7 +4,7 @@ use std::hash::{BuildHasherDefault, Hasher};
 
 pub(crate) type AnyObject = Box<dyn Any + Send + Sync>;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct TypeMap {
     inner: HashMap<TypeId, AnyObject, BuildHasherDefault<IdentHash>>,
 }
