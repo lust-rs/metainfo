@@ -146,8 +146,12 @@ impl MetaInfo {
     /// Clear the `MetaInfo` of all inserted MetaInfo.
     #[inline]
     pub fn clear(&mut self) {
-        self.tmap.as_mut().map(|tmap| tmap.clear());
-        self.smap.as_mut().map(|smap| smap.clear());
+        if let Some(tmap) = self.tmap.as_mut() {
+            tmap.clear()
+        }
+        if let Some(smap) = self.smap.as_mut() {
+            smap.clear()
+        }
     }
 
     /// Extends self with the items from another `MetaInfo`.
