@@ -1,15 +1,16 @@
 [package]
 name = "metainfo"
-version = "0.2.0"
-authors = ["Pure White <wudi.daniel@bytedance.com>", "John Smith <john.xu@bytedance.com>"]
+version = "0.2.1"
+authors = [
+    "Pure White <wudi.daniel@bytedance.com>",
+    "John Smith <john.xu@bytedance.com>"
+]
 edition = "2018"
 description = "Transmissing metainfo across components."
 repository = "https://github.com/lust-rs/metainfo"
 license = "MIT OR Apache-2.0"
 keywords = ["context", "metainfo", "metadata"]
 categories = ["accessibility", "rust-patterns", "concurrency"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 fxhash = "0.2"
