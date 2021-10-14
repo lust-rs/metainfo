@@ -1,10 +1,25 @@
 mod type_map;
 
 use fxhash::FxHashMap;
+use kv::Node;
+use paste::paste;
 use std::borrow::Cow;
 use std::fmt;
 use std::sync::Arc;
 pub use type_map::TypeMap;
+
+pub mod backward;
+pub mod forward;
+
+pub use backward::Backward;
+pub use forward::Forward;
+
+mod kv;
+
+/// Framework should all obey these prefixes.
+pub const PREFIX_PERSISTENT: &str = "RPC_PERSIST_";
+pub const PREFIX_TRANSIENT: &str = "RPC_TRANSIT_";
+pub const PREFIX_TRANSIENT_UPSTREAM: &str = "RPC_TRANSIT_UPSTREAM_";
 
 /// `MetaInfo` is used to passthrough information between components and even client-server.
 /// It supports two types of info: typed map and string k-v.
@@ -37,7 +52,12 @@ pub struct MetaInfo {
     /// we search it in the parent scope.
     parent: Option<Arc<MetaInfo>>,
     tmap: Option<TypeMap>,
-    smap: Option<FxHashMap<Cow<'static, str>, Cow<'static, str>>>,
+    smap: Option<FxHashMap<Cow<'static, str>, Cow<'static, str>>>, // for str k-v
+
+    /// for information transport through client and server.
+    /// e.g. RPC
+    forward_node: Option<kv::Node>,
+    backward_node: Option<kv::Node>,
 }
 
 impl MetaInfo {
@@ -55,6 +75,9 @@ impl MetaInfo {
             parent: Some(parent),
             tmap: None,
             smap: None,
+
+            forward_node: None,
+            backward_node: None,
         }
     }
 
@@ -168,6 +191,86 @@ impl MetaInfo {
                 .extend(smap);
         }
     }
+
+    fn ensure_forward_node(&mut self) {
+        if self.forward_node.is_none() {
+            self.forward_node = Some(Node::default())
+        }
+    }
+
+    fn ensure_backward_node(&mut self) {
+        if self.backward_node.is_none() {
+            self.backward_node = Some(Node::default())
+        }
+    }
+}
+
+macro_rules! get_impl {
+    ($name:ident,$node:ident,$func_name:ident) => {
+        paste! {
+            fn [<get_ $name>]<K: Into<Cow<'static, str>>>(&self, key: K) -> Option<Cow<'static, str>> {
+                match self.[<$node _node>].as_ref() {
+                    Some(node) => node.[<get_ $func_name>](key),
+                    None => None,
+                }
+            }
+        }
+    };
+}
+
+macro_rules! set_impl {
+    ($name:ident,$node:ident,$func_name:ident) => {
+        paste! {
+            fn [<set_ $name>]<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(
+                &mut self,
+                key: K,
+                value: V,
+            ) {
+                self.[<ensure_ $node _node>]();
+                self.[<$node _node>]
+                    .as_mut()
+                    .unwrap()
+                    .[<set_ $func_name>](key, value)
+            }
+        }
+    };
+}
+
+macro_rules! del_impl {
+    ($name:ident,$node:ident,$func_name:ident) => {
+        paste! {
+            fn [<del_ $name>]<K: Into<Cow<'static, str>>>(&mut self, key: K) {
+                if let Some(node) = self.[<$node _node>].as_mut() {
+                    node.[<del_ $func_name>](key)
+                }
+            }
+        }
+    };
+}
+
+impl forward::Forward for MetaInfo {
+    get_impl!(persistent, forward, persistent);
+    get_impl!(transient, forward, transient);
+    get_impl!(upstream, forward, stale);
+
+    set_impl!(persistent, forward, persistent);
+    set_impl!(transient, forward, transient);
+    set_impl!(upstream, forward, stale);
+
+    del_impl!(persistent, forward, persistent);
+    del_impl!(transient, forward, transient);
+    del_impl!(upstream, forward, stale);
+}
+
+impl backward::Backward for MetaInfo {
+    get_impl!(backward_transient, backward, transient);
+    get_impl!(backward_downstream, backward, stale);
+
+    set_impl!(backward_transient, backward, transient);
+    set_impl!(backward_downstream, backward, stale);
+
+    del_impl!(backward_transient, backward, transient);
+    del_impl!(backward_downstream, backward, stale);
 }
 
 impl fmt::Debug for MetaInfo {
