@@ -208,7 +208,7 @@ impl MetaInfo {
 macro_rules! get_impl {
     ($name:ident,$node:ident,$func_name:ident) => {
         paste! {
-            fn [<get_ $name>]<K: Into<Cow<'static, str>>>(&self, key: K) -> Option<Cow<'static, str>> {
+            fn [<get_ $name>]<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>> {
                 match self.[<$node _node>].as_ref() {
                     Some(node) => node.[<get_ $func_name>](key),
                     None => None,
@@ -239,7 +239,7 @@ macro_rules! set_impl {
 macro_rules! del_impl {
     ($name:ident,$node:ident,$func_name:ident) => {
         paste! {
-            fn [<del_ $name>]<K: Into<Cow<'static, str>>>(&mut self, key: K) {
+            fn [<del_ $name>]<K: AsRef<str>>(&mut self, key: K) {
                 if let Some(node) = self.[<$node _node>].as_mut() {
                     node.[<del_ $func_name>](key)
                 }
