@@ -25,8 +25,8 @@ macro_rules! set_impl {
 macro_rules! del_impl {
     ($name:ident) => {
         paste! {
-            pub fn [<del_ $name>]<K: Into<Cow<'static, str>>>(&mut self, key: K) {
-                let key = key.into();
+            pub fn [<del_ $name>]<K: AsRef<str>>(&mut self, key: K) {
+                let key = key.as_ref();
                 if let Some(v) = self.$name.as_mut() {
                     if let Some(index) = v.iter().position(|k| k.key == key) {
                         v.remove(index);
@@ -40,8 +40,8 @@ macro_rules! del_impl {
 macro_rules! get_impl {
     ($name:ident) => {
         paste! {
-            pub fn [<get_ $name>]<K: Into<Cow<'static, str>>>(&self, key: K) -> Option<Cow<'static, str>> {
-                let key = key.into();
+            pub fn [<get_ $name>]<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>> {
+                let key = key.as_ref();
                 match self.$name.as_ref() {
                     Some(v) => {
                         let kv = v.iter().find(|&kv| kv.key == key);
