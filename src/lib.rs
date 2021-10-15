@@ -369,21 +369,21 @@ impl backward::Backward for MetaInfo {
     del_impl!(backward_transient, backward, transient);
     del_impl!(backward_downstream, backward, stale);
 
-    fn get_all_transients(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_backward_transients(&self) -> Option<&Vec<Arc<KV>>> {
         match self.backward_node.as_ref() {
             Some(node) => node.get_all_transients(),
             None => None,
         }
     }
 
-    fn get_all_downstreams(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_backward_downstreams(&self) -> Option<&Vec<Arc<KV>>> {
         match self.backward_node.as_ref() {
             Some(node) => node.get_all_stales(),
             None => None,
         }
     }
 
-    fn strip_rpc_prefix_and_set_downstream<
+    fn strip_rpc_prefix_and_set_backward_downstream<
         K: Into<Cow<'static, str>>,
         V: Into<Cow<'static, str>>,
     >(
@@ -397,7 +397,7 @@ impl backward::Backward for MetaInfo {
         }
     }
 
-    fn strip_http_prefix_and_set_downstream<
+    fn strip_http_prefix_and_set_backward_downstream<
         K: Into<Cow<'static, str>>,
         V: Into<Cow<'static, str>>,
     >(
