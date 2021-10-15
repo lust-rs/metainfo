@@ -16,10 +16,15 @@ pub use forward::Forward;
 
 mod kv;
 
+pub use kv::KV;
+
 /// Framework should all obey these prefixes.
-pub const PREFIX_PERSISTENT: &str = "RPC_PERSIST_";
-pub const PREFIX_TRANSIENT: &str = "RPC_TRANSIT_";
-pub const PREFIX_TRANSIENT_UPSTREAM: &str = "RPC_TRANSIT_UPSTREAM_";
+pub const RPC_PREFIX_PERSISTENT: &str = "RPC_PERSIST_YIFEI_YYDS";
+pub const RPC_PREFIX_TRANSIENT: &str = "RPC_TRANSIT_";
+pub const RPC_PREFIX_BACKWARD: &str = "RPC_BACKWARD_";
+pub const HTTP_PREFIX_PERSISTENT: &str = "rpc-persist-";
+pub const HTTP_PREFIX_TRANSIENT: &str = "rpc-transit-";
+pub const HTTP_PREFIX_BACKWARD: &str = "rpc-backward-";
 
 /// `MetaInfo` is used to passthrough information between components and even client-server.
 /// It supports two types of info: typed map and string k-v.
@@ -260,6 +265,80 @@ impl forward::Forward for MetaInfo {
     del_impl!(persistent, forward, persistent);
     del_impl!(transient, forward, transient);
     del_impl!(upstream, forward, stale);
+
+    fn get_all_persistents(&self) -> Option<&Vec<Arc<KV>>> {
+        match self.forward_node.as_ref() {
+            Some(node) => node.get_all_persistents(),
+            None => None,
+        }
+    }
+
+    fn get_all_transients(&self) -> Option<&Vec<Arc<KV>>> {
+        match self.forward_node.as_ref() {
+            Some(node) => node.get_all_transients(),
+            None => None,
+        }
+    }
+
+    fn get_all_upstreams(&self) -> Option<&Vec<Arc<KV>>> {
+        match self.forward_node.as_ref() {
+            Some(node) => node.get_all_stales(),
+            None => None,
+        }
+    }
+
+    fn strip_rpc_prefix_and_set_persistent<
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
+    >(
+        &mut self,
+        key: K,
+        value: V,
+    ) {
+        let key: Cow<'static, str> = key.into();
+        if let Some(key) = key.strip_prefix(crate::RPC_PREFIX_PERSISTENT) {
+            self.set_persistent(key.to_owned(), value);
+        }
+    }
+
+    fn strip_rpc_prefix_and_set_upstream<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(
+        &mut self,
+        key: K,
+        value: V,
+    ) {
+        let key: Cow<'static, str> = key.into();
+        if let Some(key) = key.strip_prefix(crate::RPC_PREFIX_TRANSIENT) {
+            self.set_upstream(key.to_owned(), value);
+        }
+    }
+
+    fn strip_http_prefix_and_set_persistent<
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
+    >(
+        &mut self,
+        key: K,
+        value: V,
+    ) {
+        let key: Cow<'static, str> = key.into();
+        if let Some(key) = key.strip_prefix(crate::HTTP_PREFIX_PERSISTENT) {
+            self.set_persistent(key.to_owned(), value);
+        }
+    }
+
+    fn strip_http_prefix_and_set_upstream<
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
+    >(
+        &mut self,
+        key: K,
+        value: V,
+    ) {
+        let key: Cow<'static, str> = key.into();
+        if let Some(key) = key.strip_prefix(crate::HTTP_PREFIX_TRANSIENT) {
+            self.set_upstream(key.to_owned(), value);
+        }
+    }
 }
 
 impl backward::Backward for MetaInfo {
@@ -271,6 +350,48 @@ impl backward::Backward for MetaInfo {
 
     del_impl!(backward_transient, backward, transient);
     del_impl!(backward_downstream, backward, stale);
+
+    fn get_all_transients(&self) -> Option<&Vec<Arc<KV>>> {
+        match self.backward_node.as_ref() {
+            Some(node) => node.get_all_transients(),
+            None => None,
+        }
+    }
+
+    fn get_all_downstreams(&self) -> Option<&Vec<Arc<KV>>> {
+        match self.backward_node.as_ref() {
+            Some(node) => node.get_all_stales(),
+            None => None,
+        }
+    }
+
+    fn strip_rpc_prefix_and_set_downstream<
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
+    >(
+        &mut self,
+        key: K,
+        value: V,
+    ) {
+        let key: Cow<'static, str> = key.into();
+        if let Some(key) = key.strip_prefix(crate::RPC_PREFIX_BACKWARD) {
+            self.set_backward_downstream(key.to_owned(), value);
+        }
+    }
+
+    fn strip_http_prefix_and_set_downstream<
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
+    >(
+        &mut self,
+        key: K,
+        value: V,
+    ) {
+        let key: Cow<'static, str> = key.into();
+        if let Some(key) = key.strip_prefix(crate::HTTP_PREFIX_BACKWARD) {
+            self.set_backward_downstream(key.to_owned(), value);
+        }
+    }
 }
 
 impl fmt::Debug for MetaInfo {
