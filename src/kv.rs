@@ -40,12 +40,12 @@ macro_rules! del_impl {
 macro_rules! get_impl {
     ($name:ident) => {
         paste! {
-            pub fn [<get_ $name>]<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>> {
+            pub fn [<get_ $name>]<K: AsRef<str>>(&self, key: K) -> Option<&str> {
                 let key = key.as_ref();
                 match self.$name.as_ref() {
                     Some(v) => {
                         let kv = v.iter().find(|&kv| kv.key == key);
-                        kv.map(|kv| kv.value.clone())
+                        kv.map(|kv| kv.value.as_ref())
                     }
                     None => None,
                 }
@@ -76,6 +76,14 @@ impl KV {
             key: key.into(),
             value: value.into(),
         }
+    }
+
+    pub fn key(&self) -> &str {
+        self.key.as_ref()
+    }
+
+    pub fn value(&self) -> &str {
+        self.value.as_ref()
     }
 }
 

@@ -3,9 +3,9 @@ use std::{borrow::Cow, sync::Arc};
 use crate::KV;
 
 pub trait Forward {
-    fn get_persistent<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>>;
-    fn get_transient<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>>;
-    fn get_upstream<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>>;
+    fn get_persistent<K: AsRef<str>>(&self, key: K) -> Option<&str>;
+    fn get_transient<K: AsRef<str>>(&self, key: K) -> Option<&str>;
+    fn get_upstream<K: AsRef<str>>(&self, key: K) -> Option<&str>;
 
     fn get_all_persistents(&self) -> Option<&Vec<Arc<KV>>>;
     fn get_all_transients(&self) -> Option<&Vec<Arc<KV>>>;

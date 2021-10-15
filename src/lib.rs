@@ -231,7 +231,7 @@ impl MetaInfo {
 macro_rules! get_impl {
     ($name:ident,$node:ident,$func_name:ident) => {
         paste! {
-            fn [<get_ $name>]<K: AsRef<str>>(&self, key: K) -> Option<Cow<'static, str>> {
+            fn [<get_ $name>]<K: AsRef<str>>(&self, key: K) -> Option<&str> {
                 match self.[<$node _node>].as_ref() {
                     Some(node) => node.[<get_ $func_name>](key),
                     None => None,
