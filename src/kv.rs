@@ -54,6 +54,16 @@ macro_rules! get_impl {
     };
 }
 
+macro_rules! get_all_impl {
+    ($name:ident) => {
+        paste! {
+            pub fn [<get_all_ $name s>](&self) -> Option<&Vec<Arc<KV>>> {
+                self.$name.as_ref()
+            }
+        }
+    };
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct KV {
     key: Cow<'static, str>,
@@ -88,6 +98,10 @@ impl Node {
     get_impl!(persistent);
     get_impl!(transient);
     get_impl!(stale);
+
+    get_all_impl!(persistent);
+    get_all_impl!(transient);
+    get_all_impl!(stale);
 }
 
 impl Default for Node {
