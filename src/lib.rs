@@ -76,13 +76,15 @@ impl MetaInfo {
     /// When the info is not found in the current scope, `MetaInfo` will try to get from parent.
     #[inline]
     pub fn from(parent: Arc<MetaInfo>) -> MetaInfo {
+        let forward_node = parent.forward_node.clone();
+        let backward_node = parent.backward_node.clone();
         MetaInfo {
             parent: Some(parent),
             tmap: None,
             smap: None,
 
-            forward_node: None,
-            backward_node: None,
+            forward_node,
+            backward_node,
         }
     }
 
@@ -194,6 +196,22 @@ impl MetaInfo {
             self.smap
                 .get_or_insert_with(FxHashMap::default)
                 .extend(smap);
+        }
+
+        if let Some(node) = other.forward_node {
+            if self.forward_node.is_none() {
+                self.forward_node = Some(node);
+            } else {
+                self.forward_node.as_mut().unwrap().extend(node);
+            }
+        }
+
+        if let Some(node) = other.backward_node {
+            if self.backward_node.is_none() {
+                self.backward_node = Some(node);
+            } else {
+                self.backward_node.as_mut().unwrap().extend(node);
+            }
         }
     }
 

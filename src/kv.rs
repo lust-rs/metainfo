@@ -79,7 +79,7 @@ impl KV {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     persistent: Option<Vec<Arc<KV>>>,
     transient: Option<Vec<Arc<KV>>>,
@@ -102,6 +102,32 @@ impl Node {
     get_all_impl!(persistent);
     get_all_impl!(transient);
     get_all_impl!(stale);
+
+    pub fn extend(&mut self, other: Self) {
+        if let Some(v) = other.persistent {
+            if self.persistent.is_none() {
+                self.persistent = Some(v);
+            } else {
+                self.persistent.as_mut().unwrap().extend(v);
+            }
+        }
+
+        if let Some(v) = other.transient {
+            if self.transient.is_none() {
+                self.transient = Some(v);
+            } else {
+                self.transient.as_mut().unwrap().extend(v);
+            }
+        }
+
+        if let Some(v) = other.stale {
+            if self.stale.is_none() {
+                self.stale = Some(v);
+            } else {
+                self.stale.as_mut().unwrap().extend(v);
+            }
+        }
+    }
 }
 
 impl Default for Node {
