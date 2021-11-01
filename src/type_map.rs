@@ -42,4 +42,9 @@ impl TypeMap {
     pub fn extend(&mut self, other: TypeMap) {
         self.inner.extend(other.inner)
     }
+
+    #[inline]
+    pub fn iter(&self) -> ::std::collections::hash_map::Iter<'_, TypeId, AnyObject> {
+        self.inner.iter()
+    }
 }

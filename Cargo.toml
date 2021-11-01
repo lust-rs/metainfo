@@ -1,6 +1,6 @@
 [package]
 name = "metainfo"
-version = "0.4.3"
+version = "0.4.4"
 authors = [
     "Pure White <wudi.daniel@bytedance.com>",
     "John Smith <john.xu@bytedance.com>",
