@@ -19,7 +19,7 @@ mod kv;
 pub use kv::KV;
 
 /// Framework should all obey these prefixes.
-pub const RPC_PREFIX_PERSISTENT: &str = "RPC_PERSIST_YIFEI_YYDS";
+pub const RPC_PREFIX_PERSISTENT: &str = "RPC_PERSIST_";
 pub const RPC_PREFIX_TRANSIENT: &str = "RPC_TRANSIT_";
 pub const RPC_PREFIX_BACKWARD: &str = "RPC_BACKWARD_";
 pub const HTTP_PREFIX_PERSISTENT: &str = "rpc-persist-";
