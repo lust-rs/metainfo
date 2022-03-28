@@ -1,6 +1,6 @@
 use paste::paste;
 use std::borrow::Cow;
-use std::sync::Arc;
+use std::collections::HashMap;
 
 const DEFAULT_CAPACITY: usize = 10; // maybe enough for most cases?
 
@@ -12,11 +12,10 @@ macro_rules! set_impl {
                 key: K,
                 value: V,
             ) {
-                let kv = KV::new(key, value);
                 if self.$name.is_none() {
-                    self.$name = Some(Vec::with_capacity(DEFAULT_CAPACITY));
+                    self.$name = Some(HashMap::with_capacity(DEFAULT_CAPACITY));
                 }
-                self.$name.as_mut().unwrap().push(Arc::new(kv));
+                self.$name.as_mut().unwrap().insert(key.into(), value.into());
             }
         }
     };
@@ -28,9 +27,7 @@ macro_rules! del_impl {
             pub fn [<del_ $name>]<K: AsRef<str>>(&mut self, key: K) {
                 let key = key.as_ref();
                 if let Some(v) = self.$name.as_mut() {
-                    if let Some(index) = v.iter().position(|k| k.key == key) {
-                        v.remove(index);
-                    }
+                    v.remove(key);
                 }
             }
         }
@@ -44,8 +41,7 @@ macro_rules! get_impl {
                 let key = key.as_ref();
                 match self.$name.as_ref() {
                     Some(v) => {
-                        let kv = v.iter().find(|&kv| kv.key == key);
-                        kv.map(|kv| kv.value.as_ref())
+                        v.get(key).map(|v| v.as_ref())
                     }
                     None => None,
                 }
@@ -57,41 +53,19 @@ macro_rules! get_impl {
 macro_rules! get_all_impl {
     ($name:ident) => {
         paste! {
-            pub fn [<get_all_ $name s>](&self) -> Option<&Vec<Arc<KV>>> {
+            pub fn [<get_all_ $name s>](&self) -> Option<&HashMap<Cow<'static, str>, Cow<'static, str>>> {
                 self.$name.as_ref()
             }
         }
     };
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct KV {
-    key: Cow<'static, str>,
-    value: Cow<'static, str>,
-}
-
-impl KV {
-    pub fn new<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(key: K, value: V) -> Self {
-        Self {
-            key: key.into(),
-            value: value.into(),
-        }
-    }
-
-    pub fn key(&self) -> &str {
-        self.key.as_ref()
-    }
-
-    pub fn value(&self) -> &str {
-        self.value.as_ref()
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Node {
-    persistent: Option<Vec<Arc<KV>>>,
-    transient: Option<Vec<Arc<KV>>>,
-    stale: Option<Vec<Arc<KV>>>,
+    persistent: Option<HashMap<Cow<'static, str>, Cow<'static, str>>>,
+    transient: Option<HashMap<Cow<'static, str>, Cow<'static, str>>>,
+    // this is called stale because upstream and downstream all use this.
+    stale: Option<HashMap<Cow<'static, str>, Cow<'static, str>>>,
 }
 
 impl Node {
@@ -134,16 +108,6 @@ impl Node {
             } else {
                 self.stale.as_mut().unwrap().extend(v);
             }
-        }
-    }
-}
-
-impl Default for Node {
-    fn default() -> Self {
-        Self {
-            persistent: None,
-            transient: None,
-            stale: None,
         }
     }
 }

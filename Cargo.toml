@@ -1,11 +1,11 @@
 [package]
 name = "metainfo"
-version = "0.4.5"
+version = "0.5.0"
 authors = [
     "Pure White <wudi.daniel@bytedance.com>",
     "John Smith <john.xu@bytedance.com>",
 ]
-edition = "2018"
+edition = "2021"
 description = "Transmissing metainfo across components."
 repository = "https://github.com/lust-rs/metainfo"
 license = "MIT OR Apache-2.0"

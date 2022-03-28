@@ -4,6 +4,7 @@ use fxhash::FxHashMap;
 use kv::Node;
 use paste::paste;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 pub use type_map::TypeMap;
@@ -15,8 +16,6 @@ pub use backward::Backward;
 pub use forward::Forward;
 
 mod kv;
-
-pub use kv::KV;
 
 /// Framework should all obey these prefixes.
 pub const RPC_PREFIX_PERSISTENT: &str = "RPC_PERSIST_";
@@ -284,21 +283,21 @@ impl forward::Forward for MetaInfo {
     del_impl!(transient, forward, transient);
     del_impl!(upstream, forward, stale);
 
-    fn get_all_persistents(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_persistents(&self) -> Option<&HashMap<Cow<'static, str>, Cow<'static, str>>> {
         match self.forward_node.as_ref() {
             Some(node) => node.get_all_persistents(),
             None => None,
         }
     }
 
-    fn get_all_transients(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_transients(&self) -> Option<&HashMap<Cow<'static, str>, Cow<'static, str>>> {
         match self.forward_node.as_ref() {
             Some(node) => node.get_all_transients(),
             None => None,
         }
     }
 
-    fn get_all_upstreams(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_upstreams(&self) -> Option<&HashMap<Cow<'static, str>, Cow<'static, str>>> {
         match self.forward_node.as_ref() {
             Some(node) => node.get_all_stales(),
             None => None,
@@ -369,14 +368,18 @@ impl backward::Backward for MetaInfo {
     del_impl!(backward_transient, backward, transient);
     del_impl!(backward_downstream, backward, stale);
 
-    fn get_all_backward_transients(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_backward_transients(
+        &self,
+    ) -> Option<&HashMap<Cow<'static, str>, Cow<'static, str>>> {
         match self.backward_node.as_ref() {
             Some(node) => node.get_all_transients(),
             None => None,
         }
     }
 
-    fn get_all_backward_downstreams(&self) -> Option<&Vec<Arc<KV>>> {
+    fn get_all_backward_downstreams(
+        &self,
+    ) -> Option<&HashMap<Cow<'static, str>, Cow<'static, str>>> {
         match self.backward_node.as_ref() {
             Some(node) => node.get_all_stales(),
             None => None,
