@@ -17,6 +17,11 @@ pub use forward::Forward;
 
 mod kv;
 
+#[cfg(feature = "task_local")]
+tokio::task_local! {
+    pub static METAINFO: std::cell::RefCell<MetaInfo>;
+}
+
 /// Framework should all obey these prefixes.
 pub const RPC_PREFIX_PERSISTENT: &str = "RPC_PERSIST_";
 pub const RPC_PREFIX_TRANSIENT: &str = "RPC_TRANSIT_";
@@ -26,8 +31,11 @@ pub const HTTP_PREFIX_TRANSIENT: &str = "rpc-transit-";
 pub const HTTP_PREFIX_BACKWARD: &str = "rpc-backward-";
 
 /// `MetaInfo` is used to passthrough information between components and even client-server.
+///
 /// It supports two types of info: typed map and string k-v.
+///
 /// It is designed to be tree-like, which means you can share a `MetaInfo` with multiple children.
+///
 /// Note: only the current scope is mutable.
 ///
 /// Examples:
@@ -73,6 +81,8 @@ impl MetaInfo {
 
     /// Creates an `MetaInfo` with the parent given.
     /// When the info is not found in the current scope, `MetaInfo` will try to get from parent.
+    ///
+    /// [`derive`] is more efficient than this. It is recommended to use [`derive`] instead of this.
     #[inline]
     pub fn from(parent: Arc<MetaInfo>) -> MetaInfo {
         let forward_node = parent.forward_node.clone();
@@ -84,6 +94,29 @@ impl MetaInfo {
 
             forward_node,
             backward_node,
+        }
+    }
+
+    /// Derives the current [`MetaInfo`], returns two new equivalent `Metainfo`s.
+    ///
+    /// When the info is not found in the current scope, `MetaInfo` will try to get from parent.
+    ///
+    /// This is the recommended way.
+    #[inline]
+    pub fn derive(self) -> (MetaInfo, MetaInfo) {
+        if self.tmap.is_none() && self.smap.is_none() {
+            // we can use the same parent as self to make the tree small
+            let new = MetaInfo {
+                parent: self.parent.clone(),
+                tmap: None,
+                smap: None,
+                forward_node: self.forward_node.clone(),
+                backward_node: self.backward_node.clone(),
+            };
+            (self, new)
+        } else {
+            let mi = Arc::new(self);
+            (Self::from(mi.clone()), Self::from(mi))
         }
     }
 
