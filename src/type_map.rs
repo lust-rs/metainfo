@@ -1,7 +1,27 @@
 use fxhash::FxHashMap;
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    collections::hash_map::Entry as MapEntry,
+    marker::PhantomData,
+};
 
 pub(crate) type AnyObject = Box<dyn Any + Send + Sync>;
+
+pub struct Entry<'a, K: 'a, V: 'a> {
+    inner: MapEntry<'a, K, AnyObject>,
+    _marker: PhantomData<V>,
+}
+
+impl<'a, K, V> Entry<'a, K, V> {
+    #[inline]
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
+    where
+        V: Send + Sync + 'static,
+    {
+        let v = self.inner.or_insert_with(|| Box::new(default()));
+        v.downcast_mut().unwrap()
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct TypeMap {
@@ -46,5 +66,13 @@ impl TypeMap {
     #[inline]
     pub fn iter(&self) -> ::std::collections::hash_map::Iter<'_, TypeId, AnyObject> {
         self.inner.iter()
+    }
+
+    #[inline]
+    pub fn entry<T: 'static>(&mut self) -> Entry<'_, TypeId, T> {
+        Entry {
+            inner: self.inner.entry(TypeId::of::<T>()),
+            _marker: PhantomData,
+        }
     }
 }
